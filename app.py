@@ -4,6 +4,8 @@ import numpy as np
 import pickle
 from sentence_transformers import SentenceTransformer
 from sklearn.cluster import KMeans
+import pdfplumber
+import docx
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -42,6 +44,18 @@ def find_matching_jobs(user_skills, data, embeddings, knn, top_n=5):
     matching_jobs = data.iloc[indices[0]]
     return matching_jobs
 
+def extract_text_from_file(uploaded_file):
+    """Extracts text from uploaded PDF, DOCX, or TXT files."""
+    if uploaded_file.name.endswith(".txt"):
+        return uploaded_file.getvalue().decode("utf-8")
+    elif uploaded_file.name.endswith(".pdf"):
+        with pdfplumber.open(uploaded_file) as pdf:
+            return " ".join([page.extract_text() for page in pdf.pages if page.extract_text()])
+    elif uploaded_file.name.endswith(".docx"):
+        doc = docx.Document(uploaded_file)
+        return " ".join([para.text for para in doc.paragraphs])
+    return ""
+
 # Streamlit UI
 st.title("Job Skill Matching System")
 st.write("Upload your resume or manually enter skills to analyze skill gaps and job relationships.")
@@ -49,10 +63,11 @@ st.write("Upload your resume or manually enter skills to analyze skill gaps and 
 data, embeddings, knn = load_model()
 
 # Upload Resume
-uploaded_file = st.file_uploader("Upload Resume (TXT format)", type=["txt"])
+uploaded_file = st.file_uploader("Upload Resume (PDF, DOCX, or TXT format)", type=["pdf", "docx", "txt"])
 user_skills = []
 if uploaded_file is not None:
-    user_skills = uploaded_file.getvalue().decode("utf-8").split(",")
+    extracted_text = extract_text_from_file(uploaded_file)
+    user_skills = extracted_text.split(",")
 
 # Manual Skill Entry
 manual_input = st.text_area("Or Enter Your Skills (comma-separated)")
