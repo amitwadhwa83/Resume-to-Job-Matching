@@ -1,0 +1,75 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import pickle
+from sentence_transformers import SentenceTransformer
+from sklearn.cluster import KMeans
+
+import warnings
+warnings.filterwarnings('ignore')
+
+# Load SBERT Model
+MODEL_NAME = "all-MiniLM-L6-v2"
+model = SentenceTransformer(MODEL_NAME)
+
+# Load Model & Data
+def load_model(path="models/"):
+    with open(f"{path}knn_model.pkl", "rb") as f:
+        knn = pickle.load(f)
+    embeddings = np.load(f"{path}embeddings.npy")
+    data = pd.read_csv(f"{path}job_data.csv")
+    print("loaded model")
+    return data, embeddings, knn
+
+def cluster_skills(skills, n_clusters=10):
+    """Clusters skills into meaningful groups using KMeans."""
+    vectorized_skills = np.array([model.encode(skill) for skill in skills])
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+    labels = kmeans.fit_predict(vectorized_skills)
+    return dict(zip(skills, labels))
+
+def gap_analysis(user_skills, job_skills):
+    """Identifies missing skills by comparing user skills with job requirements."""
+    user_skills_set = set(user_skills)
+    job_skills_set = set(job_skills)
+    missing_skills = job_skills_set - user_skills_set
+    return list(missing_skills)
+
+def find_matching_jobs(user_skills, data, embeddings, knn, top_n=5):
+    """Finds the best matching jobs based on user skills."""
+    user_embedding = model.encode(", ".join(user_skills)).reshape(1, -1)
+    distances, indices = knn.kneighbors(user_embedding, n_neighbors=top_n)
+    matching_jobs = data.iloc[indices[0]]
+    return matching_jobs
+
+# Streamlit UI
+st.title("Job Skill Matching System")
+st.write("Upload your resume or manually enter skills to analyze skill gaps and job relationships.")
+
+data, embeddings, knn = load_model()
+
+# Upload Resume
+uploaded_file = st.file_uploader("Upload Resume (TXT format)", type=["txt"])
+user_skills = []
+if uploaded_file is not None:
+    user_skills = uploaded_file.getvalue().decode("utf-8").split(",")
+
+# Manual Skill Entry
+manual_input = st.text_area("Or Enter Your Skills (comma-separated)")
+if manual_input:
+    user_skills.extend(manual_input.split(","))
+
+# Select Job Role
+target_job = st.selectbox("Select a Job Role", data["title"].unique())
+job_row = data[data["title"] == target_job].iloc[0]
+job_skills = job_row["skills_desc"].split(", ")
+
+if st.button("Analyze Skill Gap"):
+    missing_skills = gap_analysis(user_skills, job_skills)
+    st.write("### Missing Skills:", missing_skills if missing_skills else "None")
+
+if st.button("Find Matching Jobs"):
+    matching_jobs = find_matching_jobs(user_skills, data, embeddings, knn)
+    st.write("### Best Matching Jobs:")
+    st.dataframe(matching_jobs[["title", "company_name", "location", "skills_desc","job_posting_url"]])
+
