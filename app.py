@@ -108,7 +108,7 @@ if manual_input:
     user_skills.extend(manual_input.split(","))
 
 # Select Job Role
-target_job = st.selectbox("Select a Job Role", data["title"].unique())
+target_job = st.selectbox("Select a Job Role for finding missing Skills", data["title"].unique())
 job_row = data[data["title"] == target_job].iloc[0]
 job_skills = job_row["skills_desc"].split(", ")
 
