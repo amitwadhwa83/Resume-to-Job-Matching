@@ -36,18 +36,6 @@ def cluster_skills(skills, n_clusters=10):
     labels = kmeans.fit_predict(vectorized_skills)
     return dict(zip(skills, labels))
 
-'''def skill_relationship_graph(data):
-    """Builds and visualizes a skill relationship network."""
-    G = nx.Graph()
-    for skills in data["skills_desc"]:
-        skill_list = skills.split(', ')
-        for i in range(len(skill_list)):
-            for j in range(i+1, len(skill_list)):
-                G.add_edge(skill_list[i], skill_list[j])
-    plt.figure(figsize=(12, 8))
-    nx.draw(G, with_labels=True, node_color='lightblue', edge_color='gray')
-    st.pyplot(plt)'''
-
 def gap_analysis(user_skills, job_skills):
     """Identifies missing skills by comparing user skills with job requirements."""
     user_skills_set = set(user_skills)
@@ -77,21 +65,28 @@ def extract_text_from_file(uploaded_file):
 
 def show_skill_trends(data):
     """Visualizes demand trends for specific skills over time."""
-    data['original_listed_time'] = pd.to_datetime(data['original_listed_time'])
+    #data['original_listed_time'] = pd.to_datetime(data['original_listed_time'], errors='coerce')
+    data['original_listed_time'] = pd.to_datetime(data['original_listed_time'], unit='ms')
     all_skills = [skill for sublist in data['skills_desc'].str.split(', ') for skill in sublist]
     skill_counts = Counter(all_skills)
-    top_skills = pd.DataFrame(skill_counts.items(), columns=['Skill', 'Count']).nlargest(10, 'Count')
+    top_skills = pd.DataFrame(skill_counts.items(), columns=['Skill', 'Count']).nlargest(15, 'Count')
 
     st.subheader("Top In-Demand Skills")
     st.bar_chart(top_skills.set_index("Skill"))
 
+    data['skills_desc'] = data['skills_desc'].apply(lambda x: x.split(", ") if isinstance(x, str) else [])
     skill_trends = data.explode('skills_desc').groupby(['original_listed_time', 'skills_desc']).size().reset_index(name='count')
     top_trending_skills = skill_trends[skill_trends['skills_desc'].isin(top_skills['Skill'])]
+
+    if top_trending_skills.empty:
+        st.warning("No skill trends found. Try using a different dataset.")
+        return
 
     plt.figure(figsize=(10, 5))
     sns.lineplot(data=top_trending_skills, x='original_listed_time', y='count', hue='skills_desc')
     plt.xticks(rotation=45)
     plt.title("Skill Demand Trends Over Time")
+    plt.xlabel("Job Posting Date")
     st.pyplot(plt)
 
 # Streamlit UI
@@ -125,9 +120,6 @@ if st.button("Find Matching Jobs"):
 if st.button("Analyze Skill Gap"):
     missing_skills = gap_analysis(user_skills, job_skills)
     st.write("### Missing Skills:", missing_skills if missing_skills else "None")
-
-'''if st.button("Show Skill Relationships"):
-    skill_relationship_graph(data)'''
 
 if st.button("Show Skill Demand Trends"):
     show_skill_trends(data)
