@@ -8,12 +8,21 @@ from sklearn.neighbors import NearestNeighbors
 MODEL_NAME = "all-MiniLM-L6-v2"
 model = SentenceTransformer(MODEL_NAME)
 
+def scrape_job_data():
+    # TODO: Implement web scraping for real-time job postings.
+    # Return data in a Pandas DataFrame with columns: job_title, description, skills, date_posted, location.
+    return pd.DataFrame(columns=["title", "description", "skills_desc", "original_listed_time", "location"])
+
 # Load & Preprocess Data
 def load_data(file_path):
     """Loads job dataset and filters for Europe-based jobs."""
-    df = pd.read_csv(file_path)
-    df = df.dropna(subset=["title", "description", "skills_desc"])
-    #df = df[df["location"].str.contains("Europe", na=False)]
+    if file_path:
+        df = pd.read_csv(file_path)
+        df = df.dropna(subset=["title", "description", "skills_desc"])
+        #df = df[df["location"].str.contains("Europe", na=False)]
+    else:
+        df = scrape_job_data()  # Hook for future real-time scraping
+        # df = df[df["location"].str.contains("Europe", na=False)]
     return df
 
 # Generate Embeddings
