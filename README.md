@@ -30,7 +30,7 @@ Try it here:
 2. The AI will suggest **matching job roles** based on past data.  
 3. Future versions will recommend **missing skills** to improve job prospects.  
 
-## 🔹 How to Contribute?  
+## 🔹 How to Contribute? 
 Want to improve this project? Fork it, enhance it, and submit a pull request!  
 
 ## Installation
